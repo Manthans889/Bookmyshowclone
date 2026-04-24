@@ -1,0 +1,129 @@
+
+
+{% extends "users/basic.html" %}
+
+{% block css %}
+<style>
+.movie-page {
+    background-color: #F5C518;
+    padding: 40px;
+    min-height: 100vh;
+}
+
+.movie-card {
+    display: flex;
+    gap: 30px;
+    background: #ffffff;
+    padding: 25px;
+    border-radius: 6px;
+    max-width: 1100px;
+    margin: auto;
+}
+
+.movie-left img {
+    width: 260px;
+    border-radius: 4px;
+}
+
+.movie-right {
+    flex: 1;
+}
+
+.movie-title {
+    color: #333333;
+    margin-bottom: 15px;
+    font-size: 32px;
+}
+
+.movie-description {
+    color: #000000;
+    font-size: 16px;
+    line-height: 1.6;
+}
+
+.section-heading {
+    color: #333333;
+    margin: 40px auto 15px;
+    max-width: 1100px;
+}
+
+.trailer-box {
+    max-width: 1100px;
+    margin: auto;
+    background: #000;
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.trailer-box iframe {
+    width: 100%;
+    height: 420px;
+}
+
+.book-btn {
+    max-width: 1100px;
+    margin: 30px auto;
+    text-align: center;
+}
+
+.book-now-btn {
+    background-color: #000000;
+    color: #ffffff;
+    padding: 14px 40px;
+    text-decoration: none;
+    font-size: 18px;
+    border-radius: 4px;
+    display: inline-block;
+    transition: background-color 0.2s ease, transform 0.1s ease;
+}
+
+.book-now-btn:hover {
+    background-color: #1a1a1a;
+    transform: scale(1.03);
+}
+
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="movie-page">
+
+    <div class="movie-card">
+        <div class="movie-left">
+            <img src="{{ movie.image.url }}" alt="{{ movie.name }}">
+        </div>
+
+        <div class="movie-right">
+            <h1 class="movie-title">{{ movie.name }}</h1>
+            <p class="movie-description">{{ movie.description }}</p>
+        </div>
+    </div>
+
+{% if movie.get_embed_url %}
+    <div class="video-container" style="position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; max-width: 100%;">
+        <iframe 
+            src="{{ movie.get_embed_url }}"
+            style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"
+            frameborder="0" 
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+            allowfullscreen
+            loading="lazy"
+            title="YouTube Video Player">
+        </iframe>
+    </div>
+{% else %}
+    <div class="no-trailer" style="background: #eee; padding: 20px; text-align: center;">
+        <p>Trailer not available</p>
+    </div>
+{% endif %}
+
+
+    <br>
+  <div class="book-btn">
+    <a href="{% url 'theater_list' movie.id %}" class="book-now-btn">
+        Book Now
+    </a>
+</div>
+
+</div>
+{% endblock %}

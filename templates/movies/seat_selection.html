@@ -1,0 +1,241 @@
+{% extends "users/basic.html" %} 
+{% block content %}
+<div class="container mt-5">
+  <div class="row">   
+    <div class="col-lg-8 mx-auto">
+
+      <!-- Movie and Theater Info -->
+      <div class="card mb-4">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center flex-wrap">
+            <div>
+              <h4 class="card-title">{{ showtime.movie.name }}</h4>
+              <p class="card-text text-muted">
+                {{ showtime.theater.name }} | {{ showtime.time }}
+              </p>
+            </div>
+            <div class="mt-2 mt-sm-0">
+              <button class="btn btn-outline-primary me-2 mb-2 mb-sm-0">2D</button>
+              <button class="btn btn-outline-primary me-2 mb-2 mb-sm-0">3D</button>
+              <button class="btn btn-outline-primary mb-2 mb-sm-0">IMAX 3D</button>
+              <button class="btn btn-outline-primary mb-2 mb-sm-0">{{ seats|length }} Tickets</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Seat Selection -->
+      <div class="card">
+        <div class="card-body">
+          <h5 class="card-title text-center mb-4">Select Your Seats</h5>
+          <div class="screen">All eyes this way please!</div>
+
+          <!-- No form POST — selection only, payment handled by JS -->
+          <div class="d-flex justify-content-center flex-wrap mb-4">
+            {% for seat in seats %}
+              {% if seat.is_booked %}
+                <!-- Permanently booked -->
+                <div class="seat sold" title="Sold">
+                  {{ seat.seat_number }}
+                </div>
+
+              {% elif seat.id in reserved_seat_ids %}
+                <!-- Temporarily locked by someone else -->
+                <div class="seat reserved" title="Reserved by someone">
+                  {{ seat.seat_number }}
+                </div>
+
+              {% else %}
+                <!-- Available -->
+                <div class="seat">
+                  <input
+                    type="checkbox"
+                    name="seats"
+                    value="{{ seat.id }}"
+                    class="d-none"
+                    id="seat-{{ seat.id }}"
+                  />
+                  <label
+                    for="seat-{{ seat.id }}"
+                    class="w-100 h-100 d-flex align-items-center justify-content-center"
+                  >{{ seat.seat_number }}</label>
+                </div>
+              {% endif %}
+            {% endfor %}
+          </div>
+
+          <!-- Seat Legend -->
+          <div class="d-flex justify-content-center mb-4 flex-wrap gap-3">
+            <div class="d-flex align-items-center">
+              <div class="seat" style="background-color: white"></div>
+              <span class="ms-2">Available</span>
+            </div>
+            <div class="d-flex align-items-center">
+              <div class="seat selected"></div>
+              <span class="ms-2">Selected</span>
+            </div>
+            <div class="d-flex align-items-center">
+              <div class="seat reserved"></div>
+              <span class="ms-2">Reserved</span>
+            </div>
+            <div class="d-flex align-items-center">
+              <div class="seat sold"></div>
+              <span class="ms-2">Sold</span>
+            </div>
+          </div>
+
+          <div class="text-center mt-3">
+            <button type="button" id="pay-btn" onclick="startPayment()" class="btn btn-success btn-lg">
+              Book Selected Seats
+            </button>
+          </div>
+
+          
+
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  body { font-family: Arial, sans-serif; }
+
+  .seat {
+    width: 30px;
+    height: 30px;
+    border: 1px solid #28a745;
+    margin: 3px;
+    text-align: center;
+    line-height: 30px;
+    cursor: pointer;
+    border-radius: 5px;
+    transition: background-color 0.3s, color 0.3s;
+    font-size: 11px;
+  }
+  .seat:hover { background-color: #28a745; color: white; }
+
+  input[type="checkbox"]:checked + label {
+    background-color: #28a745 !important;
+    color: white !important;
+  }
+  .seat.selected { background-color: #28a745; color: white; }
+
+
+  .seat.reserved {
+    background-color: #ffc107;
+    color: #333;
+    cursor: not-allowed;
+    border-color: #ffc107;
+  }
+
+  .seat.sold {
+    background-color: #ccc;
+    cursor: not-allowed;
+    border-color: #ccc;
+  }
+
+  .screen {
+    margin: 20px 0;
+    background-color: #ccc;
+    height: 50px;
+    text-align: center;
+    line-height: 50px;
+    color: #666;
+  }
+
+  .seat:has(input[type="checkbox"]:checked) {
+    background-color: #28a745 !important;
+    color: white !important;
+    border-color: #28a745 !important;
+}
+</style>
+
+
+<div class="text-center mt-3">
+  <button type="button" id="pay-btn" onclick="startPayment()" class="btn btn-success btn-lg">
+    Book Selected Seats
+  </button>
+</div>
+
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const checkboxes = document.querySelectorAll('input[name="seats"]');
+    const btn = document.getElementById('pay-btn');
+    checkboxes.forEach(cb => {
+      cb.addEventListener('change', function () {
+        const count = document.querySelectorAll('input[name="seats"]:checked').length;
+        btn.textContent = count > 0
+          ? `Pay & Book ${count} Seat${count > 1 ? 's' : ''}`
+          : 'Book Selected Seats';
+      });
+    });
+  });
+
+  async function startPayment() {
+    const btn = document.getElementById('pay-btn');
+    btn.disabled = true;
+    btn.textContent = 'Processing...';
+
+    const selectedSeats = [...document.querySelectorAll('input[name="seats"]:checked')]
+                          .map(el => el.value);
+
+    if (!selectedSeats.length) {
+      alert('Please select at least one seat.');
+      btn.disabled = false;
+      btn.textContent = 'Book Selected Seats';
+      return;
+    }
+
+    const orderRes = await fetch("{% url 'create_order' showtime.id %}", {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': '{{ csrf_token }}',
+      },
+      body: JSON.stringify({ seats: selectedSeats }),
+    });
+
+    const order = await orderRes.json();
+
+    if (!orderRes.ok) {
+      alert(order.error || 'Could not reserve seats. Please try again.');
+      btn.disabled = false;
+      btn.textContent = 'Book Selected Seats';
+      return;
+    }
+
+    // Use Razorpay docs approach — callback_url handles redirect after payment
+    var options = {
+      key:          order.key_id,
+      amount:       order.amount,
+      currency:     order.currency,
+      order_id:     order.order_id,
+      name:         'BookMySeat',
+      description:  '{{ showtime.movie.name }}',
+      callback_url: 'http://127.0.0.1:8000/movies/payment/success/',
+      prefill: {
+        name:  '{{ request.user.get_full_name }}',
+        email: '{{ request.user.email }}',
+      },
+      theme: { color: '#1a1a2e' },
+    };
+
+    var rzp = new Razorpay(options);
+
+    rzp.on('payment.failed', function() {
+      fetch("{% url 'release_seats' %}", {
+        method: 'POST',
+        headers: { 'X-CSRFToken': '{{ csrf_token }}' },
+      });
+      alert('Payment failed. Your seats have been released.');
+      btn.disabled = false;
+      btn.textContent = 'Book Selected Seats';
+    });
+
+    rzp.open();
+  }
+</script>
+
+{% endblock %}

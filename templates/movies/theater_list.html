@@ -1,0 +1,234 @@
+{% extends "users/basic.html" %} 
+{% block content %}
+<style>
+  
+  body {
+  font-family: Arial, sans-serif;
+  background-color: #f8f9fa;
+  color: #333;
+  margin: 0;
+  padding: 0;
+}
+
+.container {
+  padding: 20px;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.movie-title {
+  font-size: 28px;
+  font-weight: bold;
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+
+.theatre-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px;
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  margin-bottom: 15px;
+  flex-wrap: wrap; 
+}
+
+.theatre-info strong {
+  font-size: 18px;
+  flex: 1;
+}
+
+
+.info-icons {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px; 
+  margin-top: 10px;
+  flex: 2;
+}
+
+.info-icons i {
+  margin-right: 5px;
+  font-size: 18px;
+}
+
+.info-section {
+  flex: 1;
+  text-align: right;
+}
+
+
+.show-times {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 0;
+  flex-wrap: wrap;
+}
+
+.time-box {
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  padding: 10px 20px;
+  text-align: center;
+  background-color: #f1f1f1;
+  margin-bottom: 10px;
+  flex: 1;
+  min-width: 100px;
+  transition: transform 0.3s ease, background-color 0.3s ease;
+}
+
+.time-box:hover {
+  transform: scale(1.05);
+  background-color: #28a745;
+  color: white;
+}
+
+.time-box span {
+  display: block;
+  font-size: 12px;
+  color: black;
+}
+.time-box span:hover {
+  color: white;
+}
+
+.non-cancellable {
+  color: #ffc107;
+  font-size: 12px;
+  margin-top: 20px;
+  display: flex;
+  align-items: center;
+}
+
+.non-cancellable i {
+  margin-right: 5px;
+}
+
+@media (max-width: 768px) {
+  .theatre-info {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .info-section {
+    text-align: left;
+    margin-top: 10px;
+  }
+
+  .show-times {
+    justify-content: space-between;
+  }
+
+  .time-box {
+    flex: 1 1 100%;
+    margin-bottom: 10px;
+  }
+}
+
+
+.week-grid {
+  display: flex;
+  gap: 10px;
+  margin: 20px 0;
+}
+
+.day-box {
+  width: 60px;
+  padding: 10px 0;
+  text-align: center;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  text-decoration: none;
+  color: #333;
+  background: #fff;
+}
+
+.day-box.active {
+  background: #f84464;
+  color: white;
+  border-color: #f84464;
+}
+
+.day {
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.date {
+  font-size: 18px;
+}
+
+  </style>
+  
+  <body>
+  <div class="container">
+
+
+
+  <div class="movie-title">Movie - {{ movie.name }}</div>
+     
+ <div class="week-grid">
+  {% for d in week_dates %}
+    <a href="?date={{ d|date:'Y-m-d' }}"
+       class="day-box {% if d == selected_date %}active{% endif %}">
+      <div class="day">{{ d|date:"D" }}</div>
+      <div class="date">{{ d|date:"d" }}</div>
+    </a>
+  {% endfor %}
+</div>
+
+
+
+  {% if showtimes %}
+    {% for showtime in showtimes %}
+
+    <div class="theatre-info">
+  <div class="d-flex justify-content-between align-items-start">
+    
+
+    <div>
+      <strong>{{ showtime.theater.name }} Theater</strong>
+      <div class="info-icons mt-2">
+        <i class="fas fa-mobile-alt text-success"></i> M-Ticket
+        <i class="fas fa-utensils text-warning ms-3"></i> Food & Beverage
+        <i class="fas fa-parking text-primary ms-3"></i> Parking Available
+        <i class="fas fa-wheelchair text-info ms-3"></i> Wheelchair Access
+        <i class="fas fa-glasses text-danger ms-3"></i> 3D Show Available
+      </div>
+    </div>
+
+    <div class="text-end">
+      <strong class="fs-5">₹{{ showtime.price }}</strong>
+    </div>
+
+  </div>
+</div>
+      <div class="show-times">
+        <div class="time-box">
+          {{ showtime.time|date:"h:i A" }}
+          <a href="{% url 'book_seats' showtime.id %}">
+            <span>Book Now</span>
+          </a>
+        </div>
+      </div>
+
+    {% endfor %}
+  {% else %}
+    <div class="no-theaters mt-4">
+      <p>Sorry, no theaters are available for this movie at the moment.</p>
+    </div>
+  {% endif %}
+
+  <div class="non-cancellable mt-4">
+    <i class="fas fa-circle text-warning"></i> Non-cancellable
+  </div>
+
+</div>
+
+   
+{% endblock %}

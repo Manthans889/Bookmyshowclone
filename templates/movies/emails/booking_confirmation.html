@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    body { font-family: Arial, sans-serif; background: #f4f4f4; margin: 0; padding: 0; }
+    .card { background: #ffffff; max-width: 520px; margin: 40px auto;
+            border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+    .header { background: #1a1a2e; color: #fff; padding: 28px 32px; }
+    .header h1 { margin: 0; font-size: 20px; }
+    .header p  { margin: 4px 0 0; font-size: 13px; opacity: 0.7; }
+    .body { padding: 28px 32px; }
+    .row { display: flex; justify-content: space-between;
+           border-bottom: 1px solid #f0f0f0; padding: 10px 0; font-size: 14px; }
+    .label { color: #888; }
+    .value { font-weight: 600; color: #1a1a2e; }
+    .payment-id { font-family: monospace; font-size: 12px;
+                  background: #f4f4f4; padding: 2px 6px; border-radius: 4px; }
+    .footer { background: #f9f9f9; padding: 16px 32px;
+              font-size: 12px; color: #aaa; text-align: center; }
+  </style>
+</head>
+<body>
+<div class="card">
+  <div class="header">
+    <h1>&#10003; Booking Confirmed</h1>
+    <p>Hi {{ booking.user_name }}, your seat is locked in.</p>
+  </div>
+  <div class="body">
+    <div class="row">
+      <span class="label">Movie</span>
+      <span class="value">{{ booking.movie_name }}</span>
+    </div>
+    <div class="row">
+      <span class="label">Theater</span>
+      <span class="value">{{ booking.theater_name }}</span>
+    </div>
+    <div class="row">
+      <span class="label">Show time</span>
+      <span class="value">{{ booking.showtime }}</span>
+    </div>
+    <div class="row">
+      <span class="label">Seat</span>
+      <span class="value">{{ booking.seat_number }}</span>
+    </div>
+    <div class="row">
+      <span class="label">Amount paid</span>
+      <span class="value">&#8377;{{ booking.amount }}</span>
+    </div>
+    <div class="row">
+      <span class="label">Payment ID</span>
+      <span class="value"><span class="payment-id">{{ booking.payment_id }}</span></span>
+    </div>
+  </div>
+  <div class="footer">
+    This is an automated confirmation. Do not reply to this email.
+  </div>
+</div>
+</body>
+</html>
