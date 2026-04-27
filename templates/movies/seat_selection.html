@@ -214,7 +214,7 @@
       order_id:     order.order_id,
       name:         'BookMySeat',
       description:  '{{ showtime.movie.name }}',
-      callback_url: 'http://127.0.0.1:8000/movies/payment/success/',
+      callback_url: 'https://bookmyshowclone-mug8.onrender.com/movies/payment/success/',
       prefill: {
         name:  '{{ request.user.get_full_name }}',
         email: '{{ request.user.email }}',
