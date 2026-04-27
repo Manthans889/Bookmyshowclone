@@ -430,94 +430,181 @@ def razorpay_webhook(request):
 
 
 
+# @csrf_exempt
+# def payment_success(request):
+#     razorpay_payment_id = request.POST.get('razorpay_payment_id')
+#     razorpay_order_id   = request.POST.get('razorpay_order_id')
+#     razorpay_signature  = request.POST.get('razorpay_signature')
+
+#     if not all([razorpay_payment_id, razorpay_order_id, razorpay_signature]):
+#         return redirect('/bookings/')
+
+#     msg = f"{razorpay_order_id}|{razorpay_payment_id}"
+#     expected_signature = hmac.new(
+#         settings.RAZORPAY_KEY_SECRET.encode(),
+#         msg.encode(),
+#         hashlib.sha256
+#     ).hexdigest()
+
+#     if not hmac.compare_digest(expected_signature, razorpay_signature):
+#         return redirect('/bookings/')
+
+#     order       = client.order.fetch(razorpay_order_id)
+#     notes       = order.get('notes', {})
+#     showtime_id = notes.get('showtime_id')
+#     seat_ids    = notes.get('seats', '').split(',')
+#     user_id     = notes.get('user_id')
+
+#     showtime = get_object_or_404(Showtime, id=showtime_id)
+#     user     = get_object_or_404(User, id=user_id)
+#     successfully_booked = []
+
+#     for seat_id in seat_ids:
+#         if not seat_id:
+#             continue
+#         try:
+#             with transaction.atomic():
+#                 seat = Seat.objects.select_for_update().get(
+#                     id=seat_id, showtime=showtime
+#                 )
+
+#                 if Booking.objects.filter(payment_id=razorpay_payment_id).exists():
+#                     continue
+
+#                 reservation = SeatReservation.objects.select_for_update().filter(
+#                     seat=seat,
+#                     user=user,
+#                     status='reserved',
+#                 ).first()
+
+#                 Booking.objects.create(
+#                     user=user,
+#                     seat=seat,
+#                     showtime=showtime,
+#                     amount=showtime.price,
+#                     payment_id=razorpay_payment_id,
+#                     status='confirmed',
+#                 )
+#                 seat.is_booked = True
+#                 seat.save()
+
+#                 if reservation:
+#                     reservation.status = 'confirmed'
+#                     reservation.save()
+
+#                 successfully_booked.append(seat.seat_number)
+
+#         except Seat.DoesNotExist:
+#             continue
+#         except IntegrityError:
+#             continue
+
+#     request.session.pop('pending_seats', None)
+#     request.session.pop('pending_showtime', None)
+
+#     if successfully_booked:
+#         booking_data = {
+#             'user_email':   user.email,
+#             'user_name':    user.get_full_name() or user.username,
+#             'movie_name':   showtime.movie.name,
+#             'theater_name': showtime.theater.name,
+#             'showtime':     showtime.time.strftime('%d %b %Y, %I:%M %p'),
+#             'seat_number':  ', '.join(successfully_booked),
+#             'amount':       str(showtime.price * len(successfully_booked)),
+#             'payment_id':   razorpay_payment_id,
+#         }
+#         send_booking_confirmation.delay(booking_data)
+
+#     return redirect('/')
+
+
+from django.http import HttpResponse
+import logging
+
+logger = logging.getLogger(__name__)
+
 @csrf_exempt
 def payment_success(request):
-    razorpay_payment_id = request.POST.get('razorpay_payment_id')
-    razorpay_order_id   = request.POST.get('razorpay_order_id')
-    razorpay_signature  = request.POST.get('razorpay_signature')
+    if request.method != "POST":
+        return HttpResponse("Invalid request")
 
-    if not all([razorpay_payment_id, razorpay_order_id, razorpay_signature]):
-        return redirect('/bookings/')
+    try:
+        razorpay_payment_id = request.POST.get('razorpay_payment_id')
+        razorpay_order_id   = request.POST.get('razorpay_order_id')
+        razorpay_signature  = request.POST.get('razorpay_signature')
 
-    msg = f"{razorpay_order_id}|{razorpay_payment_id}"
-    expected_signature = hmac.new(
-        settings.RAZORPAY_KEY_SECRET.encode(),
-        msg.encode(),
-        hashlib.sha256
-    ).hexdigest()
+        print("DATA:", request.POST)
 
-    if not hmac.compare_digest(expected_signature, razorpay_signature):
-        return redirect('/bookings/')
+        if not all([razorpay_payment_id, razorpay_order_id, razorpay_signature]):
+            return HttpResponse("Missing data")
 
-    order       = client.order.fetch(razorpay_order_id)
-    notes       = order.get('notes', {})
-    showtime_id = notes.get('showtime_id')
-    seat_ids    = notes.get('seats', '').split(',')
-    user_id     = notes.get('user_id')
+        # 🔐 Signature verify
+        msg = f"{razorpay_order_id}|{razorpay_payment_id}"
+        expected_signature = hmac.new(
+            settings.RAZORPAY_KEY_SECRET.encode(),
+            msg.encode(),
+            hashlib.sha256
+        ).hexdigest()
 
-    showtime = get_object_or_404(Showtime, id=showtime_id)
-    user     = get_object_or_404(User, id=user_id)
-    successfully_booked = []
+        if not hmac.compare_digest(expected_signature, razorpay_signature):
+            return HttpResponse("Invalid signature")
 
-    for seat_id in seat_ids:
-        if not seat_id:
-            continue
+        # ⚠️ Wrap Razorpay fetch
         try:
-            with transaction.atomic():
-                seat = Seat.objects.select_for_update().get(
-                    id=seat_id, showtime=showtime
-                )
+            order = client.order.fetch(razorpay_order_id)
+        except Exception as e:
+            logger.error(f"Razorpay fetch failed: {str(e)}")
+            return HttpResponse("Order fetch failed")
 
-                if Booking.objects.filter(payment_id=razorpay_payment_id).exists():
-                    continue
+        notes = order.get('notes', {})
+        showtime_id = notes.get('showtime_id')
+        seat_ids = notes.get('seats', '').split(',')
+        user_id = notes.get('user_id')
 
-                reservation = SeatReservation.objects.select_for_update().filter(
-                    seat=seat,
-                    user=user,
-                    status='reserved',
-                ).first()
+        if not all([showtime_id, user_id]):
+            return HttpResponse("Invalid order metadata")
 
-                Booking.objects.create(
-                    user=user,
-                    seat=seat,
-                    showtime=showtime,
-                    amount=showtime.price,
-                    payment_id=razorpay_payment_id,
-                    status='confirmed',
-                )
-                seat.is_booked = True
-                seat.save()
+        showtime = get_object_or_404(Showtime, id=showtime_id)
+        user = get_object_or_404(User, id=user_id)
 
-                if reservation:
-                    reservation.status = 'confirmed'
-                    reservation.save()
+        successfully_booked = []
 
-                successfully_booked.append(seat.seat_number)
+        for seat_id in seat_ids:
+            if not seat_id:
+                continue
 
-        except Seat.DoesNotExist:
-            continue
-        except IntegrityError:
-            continue
+            try:
+                with transaction.atomic():
+                    seat = Seat.objects.select_for_update().get(
+                        id=seat_id, showtime=showtime
+                    )
 
-    request.session.pop('pending_seats', None)
-    request.session.pop('pending_showtime', None)
+                    if Booking.objects.filter(payment_id=razorpay_payment_id).exists():
+                        continue
 
-    if successfully_booked:
-        booking_data = {
-            'user_email':   user.email,
-            'user_name':    user.get_full_name() or user.username,
-            'movie_name':   showtime.movie.name,
-            'theater_name': showtime.theater.name,
-            'showtime':     showtime.time.strftime('%d %b %Y, %I:%M %p'),
-            'seat_number':  ', '.join(successfully_booked),
-            'amount':       str(showtime.price * len(successfully_booked)),
-            'payment_id':   razorpay_payment_id,
-        }
-        send_booking_confirmation.delay(booking_data)
+                    Booking.objects.create(
+                        user=user,
+                        seat=seat,
+                        showtime=showtime,
+                        amount=showtime.price,
+                        payment_id=razorpay_payment_id,
+                        status='confirmed',
+                    )
 
-    return redirect('/')
+                    seat.is_booked = True
+                    seat.save()
 
+                    successfully_booked.append(seat.seat_number)
 
+            except Exception as e:
+                logger.error(f"Seat booking error: {str(e)}")
+                continue
+
+        return HttpResponse("Payment success ✅")
+
+    except Exception as e:
+        logger.error(f"CRASH: {str(e)}")
+        return HttpResponse("Something broke ❌")
 
 
 # REMOVED LOGIN REQUIRED FOR WEIRD ERROR : ADD AGAIN 
