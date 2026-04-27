@@ -175,7 +175,7 @@ def book_seats(request, showtime_id):
                 'amount':       str(total_amount),
                 'payment_id':   None,
             }
-            send_booking_confirmation(booking_data) #celery needs paid  tier so back to normal 
+            send_booking_confirmation.delay(booking_data) #celery needs paid  tier to launch email  so back to normal 
 
         if error_seats:
             messages.error(request, f"Already booked seats: {', '.join(error_seats)}")
