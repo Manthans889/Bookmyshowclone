@@ -8,3 +8,4 @@ media/
 celerybeat-schedule
 celerybeat-schedule.db
 *.log
+
